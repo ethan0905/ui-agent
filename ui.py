@@ -1,12 +1,10 @@
 # macos_agent_ui.py
 #
-# Single‑line ChatGPT input bar — draggable pill — ⌘⇧C global toggle (AppKit).
+# Single-line ChatGPT input bar — draggable pill — ⌘⇧C toggle with corrected shortcuts — hidden focus ring.
 # -----------------------------------------------------------------------------------
-# Fixes in this revision (r8):
-#   • **Shortcut finally works**: Replaced fragile Carbon code with robust
-#     AppKit/NSEvent global + local monitors. macOS will prompt for
-#     *Input‑Monitoring* permission on first use; grant it.
-#   • Dragging still supported via setMovableByWindowBackground_ + background view.
+# Fixes in this revision (r13):
+#   • **Hide focus ring**: Disabled the default focus ring on NSTextField.
+#   • **Fix shortcut**: Use NSEventTypeKeyDown (not mask) for event comparison.
 # -----------------------------------------------------------------------------------
 
 from Cocoa import (
@@ -24,16 +22,19 @@ from Cocoa import (
     NSVisualEffectStateActive,
     NSFont,
     NSTextField,
+    NSFocusRingTypeNone,
     NSButton,
     NSViewWidthSizable,
     NSVisualEffectView,
     NSEvent,
     NSEventMaskKeyDown,
+    NSEventTypeKeyDown,
     NSEventModifierFlagCommand,
     NSEventModifierFlagShift,
 )
 from PyObjCTools import AppHelper
 import objc
+
 
 # ---------------------------------------------------------------------------
 # Helper: Draggable, vibrant background view
@@ -51,6 +52,12 @@ class ChatAgentWindow(NSWindow):
     ARROW_SIZE = 28
     MARGIN = 14
 
+    def canBecomeKeyWindow(self):
+        return True
+
+    def canBecomeMainWindow(self):
+        return True
+
     def init(self):
         frame = NSMakeRect(0, 0, 520, self.BAR_HEIGHT)
         style = NSWindowStyleMaskBorderless | NSWindowStyleMaskFullSizeContentView
@@ -60,7 +67,7 @@ class ChatAgentWindow(NSWindow):
         if self is None:
             return None
 
-        # Window basics ---------------------------------------------------------
+        # Window basics
         self.setOpaque_(False)
         self.setBackgroundColor_(NSColor.clearColor())
         self.setMovableByWindowBackground_(True)
@@ -69,7 +76,7 @@ class ChatAgentWindow(NSWindow):
         self.contentView().layer().setCornerRadius_(self.BAR_HEIGHT / 2)
         self.contentView().layer().setMasksToBounds_(True)
 
-        # Vibrant blur background ----------------------------------------------
+        # Vibrant blur background
         vibrant = DraggableVibrantView.alloc().initWithFrame_(self.contentView().bounds())
         vibrant.setAutoresizingMask_(NSViewWidthSizable)
         vibrant.setMaterial_(NSVisualEffectMaterialSidebar)
@@ -77,12 +84,12 @@ class ChatAgentWindow(NSWindow):
         vibrant.setState_(NSVisualEffectStateActive)
         self.contentView().addSubview_(vibrant)
 
-        # Font + baseline -------------------------------------------------------
+        # Font + baseline
         font = NSFont.systemFontOfSize_(14)
         line_height = font.defaultLineHeightForFont() + 2
         input_y = (self.BAR_HEIGHT - line_height) / 2
 
-        # Text field ------------------------------------------------------------
+        # Text field
         input_rect = NSMakeRect(
             self.MARGIN,
             input_y,
@@ -95,21 +102,25 @@ class ChatAgentWindow(NSWindow):
         input_field.setBezeled_(False)
         input_field.setBordered_(False)
         input_field.setDrawsBackground_(False)
+        input_field.setEditable_(True)
+        input_field.setSelectable_(True)
+        input_field.setFocusRingType_(NSFocusRingTypeNone)  # hide focus ring
         input_field.setFont_(font)
         vibrant.addSubview_(input_field)
 
-        # Arrow button ----------------------------------------------------------
+        # Arrow button
         arrow_x = frame.size.width - self.ARROW_SIZE - 1.5 * self.MARGIN
         arrow_y = (self.BAR_HEIGHT - self.ARROW_SIZE) / 2
-        send_rect = NSMakeRect(arrow_x, arrow_y, self.ARROW_SIZE, self.ARROW_SIZE)
-        send_btn = NSButton.alloc().initWithFrame_(send_rect)
+        send_btn = NSButton.alloc().initWithFrame_(
+            NSMakeRect(arrow_x, arrow_y, self.ARROW_SIZE, self.ARROW_SIZE)
+        )
         send_btn.setTitle_("➤")
         send_btn.setBordered_(False)
         send_btn.setFont_(NSFont.boldSystemFontOfSize_(18))
         send_btn.setContentTintColor_(NSColor.controlAccentColor())
         vibrant.addSubview_(send_btn)
 
-        # Events ----------------------------------------------------------------
+        # Events
         input_field.setTarget_(self)
         input_field.setAction_("submit:")
         send_btn.setTarget_(self)
@@ -128,38 +139,33 @@ class ChatAgentWindow(NSWindow):
 
 
 # ---------------------------------------------------------------------------
-# AppDelegate with ⌘⇧C shortcut via NSEvent monitors
+# AppDelegate with ⌘⇧C shortcut
 # ---------------------------------------------------------------------------
 class AppDelegate(NSObject):
     def applicationDidFinishLaunching_(self, _):
-        # Window ---------------------------------------------------------------
         self.window = ChatAgentWindow.alloc().init()
         self.window.center()
         self.window.makeKeyAndOrderFront_(None)
         NSApp.activateIgnoringOtherApps_(True)
+        self.window.makeFirstResponder_(self.window.input_field)
 
-        # Shortcut -------------------------------------------------------------
         self._install_shortcut()
 
-    # Install both local (while app front‑most) and global (background) monitors
     def _install_shortcut(self):
         flags_required = NSEventModifierFlagCommand | NSEventModifierFlagShift
 
         def handler(event):
             if (
-                event.type() == 10  # NSEventTypeKeyDown (PyObjC constant missing)
+                event.type() == NSEventTypeKeyDown
                 and event.charactersIgnoringModifiers().lower() == "c"
                 and (event.modifierFlags() & flags_required) == flags_required
             ):
                 self.toggleWindow()
-            return event  # for local monitor only
+            return event
 
-        # Global: no return value needed
         NSEvent.addGlobalMonitorForEventsMatchingMask_handler_(NSEventMaskKeyDown, handler)
-        # Local: must return event so others receive it
         NSEvent.addLocalMonitorForEventsMatchingMask_handler_(NSEventMaskKeyDown, handler)
 
-    # Show / hide --------------------------------------------------------------
     def toggleWindow(self):
         if self.window.isVisible():
             self.window.orderOut_(None)
@@ -167,11 +173,11 @@ class AppDelegate(NSObject):
             self.window.center()
             self.window.makeKeyAndOrderFront_(None)
             NSApp.activateIgnoringOtherApps_(True)
+            self.window.makeFirstResponder_(self.window.input_field)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app = NSApplication.sharedApplication()
     delegate = AppDelegate.alloc().init()
     app.setDelegate_(delegate)
     AppHelper.runEventLoop()
-
