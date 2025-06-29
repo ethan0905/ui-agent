@@ -117,7 +117,7 @@ class ChatAgentWindow(NSWindow):
         send_btn.setTitle_("↑")
         send_btn.setBordered_(False)
         send_btn.setFont_(NSFont.boldSystemFontOfSize_(18))
-        send_btn.setContentTintColor_(NSColor.controlAccentColor())
+        send_btn.setContentTintColor_(NSColor.darkGrayColor())
         send_btn.setBackgroundColor_(NSColor.whiteColor())
         send_btn.setCornerRadius_(self.ARROW_SIZE / 2)
         vibrant.addSubview_(send_btn)
