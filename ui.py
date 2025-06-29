@@ -114,7 +114,7 @@ class ChatAgentWindow(NSWindow):
         send_btn = NSButton.alloc().initWithFrame_(
             NSMakeRect(arrow_x, arrow_y, self.ARROW_SIZE, self.ARROW_SIZE)
         )
-        send_btn.setTitle_("➤")
+        send_btn.setTitle_("↑")
         send_btn.setBordered_(False)
         send_btn.setFont_(NSFont.boldSystemFontOfSize_(18))
         send_btn.setContentTintColor_(NSColor.controlAccentColor())
