@@ -48,7 +48,7 @@ class DraggableVibrantView(NSVisualEffectView):
 # ChatAgentWindow
 # ---------------------------------------------------------------------------
 class ChatAgentWindow(NSWindow):
-    BAR_HEIGHT = 60
+    BAR_HEIGHT = 40
     ARROW_SIZE = 28
     MARGIN = 14
 
@@ -93,11 +93,11 @@ class ChatAgentWindow(NSWindow):
         input_rect = NSMakeRect(
             self.MARGIN,
             input_y,
-            frame.size.width - self.ARROW_SIZE - 3 * self.MARGIN,
+            frame.size.width - self.ARROW_SIZE - 1.5 * self.MARGIN,
             line_height,
         )
         input_field = NSTextField.alloc().initWithFrame_(input_rect)
-        input_field.setPlaceholderString_("Message ChatGPT …")
+        input_field.setPlaceholderString_("Type your computer-agent request here…")
         input_field.setUsesSingleLineMode_(True)
         input_field.setBezeled_(False)
         input_field.setBordered_(False)
@@ -109,7 +109,7 @@ class ChatAgentWindow(NSWindow):
         vibrant.addSubview_(input_field)
 
         # Arrow button
-        arrow_x = frame.size.width - self.ARROW_SIZE - 1.5 * self.MARGIN
+        arrow_x = frame.size.width - self.ARROW_SIZE - self.MARGIN
         arrow_y = (self.BAR_HEIGHT - self.ARROW_SIZE) / 2
         send_btn = NSButton.alloc().initWithFrame_(
             NSMakeRect(arrow_x, arrow_y, self.ARROW_SIZE, self.ARROW_SIZE)
